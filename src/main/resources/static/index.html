@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Catalog</title>
+    <script src="https://unpkg.com/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
+</head>
+<body>
+    <div id="app">
+        <p>
+            <router-link to="/pens">Pens</router-link>
+            <router-link to="/books">Books</router-link>
+        </p>
+        <router-view></router-view>
+    </div>
+    <script>
+        function getApi() {
+            return fetch('/api').then((response) => {
+                return response.json()
+            })
+        }
+        const Pens = {
+            template: `<div>Pens:<p v-for='pen in pens'><router-link :to="{name: 'pen', params: {link: pen._links.self.href, deepLinkId: pen.deepLinkId}}">{{ pen.color }}</router-link></p></div>`,
+            data() {
+                return {
+                    pens: null
+                }
+            },
+            beforeRouteEnter(to, from, next) {
+                getApi().then((json) => {
+                    fetch(json._links.pens.href).then((response) => {
+                        return response.json().then((json) => {
+                                next(vm => vm.pens = json._embedded.entries)
+                            })
+                        })
+                })
+            }
+        };
+        const Pen = {
+            template: `<div>{{ 'Pen: ' + pen.color }}</div>`,
+            props: {
+                link: null,
+                deepLinkId: null
+            },
+            data() {
+                return {
+                    pen: { color: "" }
+                }
+            },
+            mounted() {
+                let url = this.link == null ? '/api/links/' + this.deepLinkId : this.link;
+                fetch(url).then((response) => {
+                    return response.json().then((json) => {
+                        this.pen = json
+                    })
+                })
+            }
+        };
+        const Books = {
+            template: `<div>Books:<p v-for='book in books'><router-link :to="{name: 'book', params: {link: book._links.self.href, deepLinkId: book.deepLinkId}}">{{ book.name }}</router-link></p></div>`,
+            data() {
+                return {
+                    books: null
+                }
+            },
+            beforeRouteEnter(to, from, next) {
+                getApi().then((json) => { /** @namespace json._links **/
+                    fetch(json._links.books.href).then((response) => {
+                        return response.json().then((json) => { /** @namespace json._embedded **/
+                                next(vm => vm.books = json._embedded.entries)
+                            })
+                        })
+                })
+            }
+        };
+        const Book = {
+            template: `<div>{{ 'Book: ' + book.name }}</div>`,
+            props: {
+                link: null,
+                deepLinkId: null
+            },
+            data() {
+                return {
+                    book: { name: "" }
+                }
+            },
+            mounted() {
+                let url = this.link == null ? '/api/links/' + this.deepLinkId : this.link;
+                fetch(url).then((response) => {
+                    return response.json().then((json) => {
+                        this.book = json
+                    })
+                })
+            }
+        };
+        const routes = [
+            { path: '/pens', component: Pens },
+            { path: '/books', component: Books },
+            { path: '/pens/:deepLinkId', name: 'pen', component: Pen, props: true },
+            { path: '/books/:deepLinkId', name: 'book', component: Book, props: true }
+        ];
+        const router = new VueRouter({ routes });
+        new Vue({
+            router
+        }).$mount('#app')
+    </script>
+</body>
+</html>
